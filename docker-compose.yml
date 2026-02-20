@@ -1,0 +1,42 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: metadata-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    volumes:
+      - mongo_data:/data/db
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: metadata-api
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      DJANGO_SECRET_KEY: "dev-secret-key"
+      DEBUG: "true"
+      ALLOWED_HOSTS: "*"
+      MONGO_URI: "mongodb://mongo:27017"
+      MONGO_DATABASE: "metadata_inventory"
+      MONGO_COLLECTION: "records"
+      HTTP_TIMEOUT_SECONDS: "10"
+      HTTP_MAX_BODY_BYTES: "1000000"
+      BACKGROUND_WORKERS: "4"
+      MONGO_CONNECT_RETRIES: "20"
+      MONGO_CONNECT_RETRY_DELAY_SECONDS: "1.5"
+    ports:
+      - "8000:8000"
+
+volumes:
+  mongo_data:
